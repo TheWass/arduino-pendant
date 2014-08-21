@@ -1,4 +1,5 @@
 #include <Adafruit_NeoPixel.h>
+// Pin definitions
 #define LED_PIN 0
 #define SEED_PIN 2
 
