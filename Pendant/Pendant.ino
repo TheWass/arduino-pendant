@@ -1,37 +1,38 @@
 #include <Adafruit_NeoPixel.h>
 // Pin definitions
-#define LED_PIN 0
-#define SEED_PIN 2
+#define LED_PIN 0  //output LED pin.
+#define SEED_PIN 2 //Leave this pin unconnected.  The ambient noise will be sufficient for a random seed.
 
 #define BRIGHTNESS (uint8_t)0x10    //Starting brightness
-#define COLOR (uint32_t)0xFF0000    //Starting color
+#define COLOR (uint32_t)0xFF0000    //Base color
 #define MAX_OFFSET (uint8_t)0x80    //Maximum offset from the starting color for each color component.
+#define MAX_SHIFT  (uint8_t)0x04    //Maximum amount of the color shift. The higher this is, the more drastic the shift.
 
-Adafruit_NeoPixel pixels = Adafruit_NeoPixel(16, LED_PIN);
+Adafruit_NeoPixel ring = Adafruit_NeoPixel(16, LED_PIN);
 
 void setup() {
   randomSeed(analogRead(SEED_PIN));
-  pixels.begin();
-  pixels.setBrightness(BRIGHTNESS);
-  for (uint8_t i=0; i<pixels.numPixels(); i++) {
-    pixels.setPixelColor(i, COLOR);
+  ring.begin();
+  ring.setBrightness(BRIGHTNESS);
+  for (uint8_t i=0; i<ring.numPixels(); i++) {
+    ring.setPixelColor(i, COLOR);
   }
 }
- 
+
 void loop() {
   //for each LED,
-  for (uint8_t i=0; i<pixels.numPixels(); i++) {
-    uint32_t color = pixels.getPixelColor(i);
+  for (uint8_t i=0; i<ring.numPixels(); i++) {
+    uint32_t curColor = ring.getPixelColor(i);
     // for each color component...
     for (uint8_t c=0; c<3; c++) {
       //get current component value
-      uint8_t component = (color >> 8 * c) & 0xFF;
-      uint8_t avgComp = (COLOR >> 8 * c) & 0xFF;
+      uint8_t component = (curColor >> 8 * c) & 0xFF;
+      uint8_t baseComp = (COLOR >> 8 * c) & 0xFF;
+      //decide how much to shift
+      uint8_t offset = random(MAX_SHIFT);
+      uint8_t maxim = ((baseComp + MAX_OFFSET > baseComp) ? baseComp + MAX_OFFSET : 0xFF);
+      uint8_t minim = ((baseComp - MAX_OFFSET < baseComp) ? baseComp - MAX_OFFSET : 0x00);
       //choose whether to add, subtract, or remain the same
-      uint8_t offset = random(4);
-      offset *= 5;
-      uint8_t maxim = ((avgComp + MAX_OFFSET > avgComp) ? avgComp + MAX_OFFSET : 0xFF);
-      uint8_t minim = ((avgComp - MAX_OFFSET < avgComp) ? avgComp - MAX_OFFSET : 0x00);
       switch (random(3)) {
         case 0: //add
           if ((component + offset > component) && (component + offset < maxim)) component += offset;
@@ -44,11 +45,12 @@ void loop() {
       }
       //replace the color component
       //clear the bitfield
-      color &= ~(uint32_t)0xFF << 8 * c;
+      curColor &= ~(uint32_t)0xFF << 8 * c;
       //set the bitfield
-      color |= (uint32_t)component << 8 * c;
+      curColor |= (uint32_t)component << 8 * c;
     }
-    delay(50);
+    ring.setPixelColor(i, curColor);
   }
-  pixels.show();
+  delay(50);
+  ring.show();
 }
